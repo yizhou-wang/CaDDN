@@ -130,9 +130,9 @@ def xz2idx_interpolate(x, z, x_grid, z_grid):
 def compute_birdviewbox(annotation, shape, scale):
     # annotation: ((x, y, z)), (h, w, l)), rot_y)
     position, dimension, rot_y = annotation
-    [h, w, l, x, y, z, rot_y] = np.array(
-        [*dimension, *position, rot_y], dtype=np.float64) * scale
-
+    [h, w, l, x, y, z] = np.array(
+        [*dimension, *position], dtype=np.float64) * scale
+    
     R = np.array([[-np.cos(rot_y), np.sin(rot_y)],
                   [np.sin(rot_y), np.cos(rot_y)]])
     t = np.array([x, z]).reshape(1, 2).T
@@ -162,13 +162,14 @@ def draw_birdeyes(ax2, gt, prediction, shape=900, scale=15):
     # gt and prediction: ((x, y, z)), (h, w, l)), rot_y), scale: rotio of pixel / meter
     # shape = 900
 
-    pred_corners_2d = compute_birdviewbox(gt, shape, scale)
-    codes = [Path.LINETO] * pred_corners_2d.shape[0]
-    codes[0] = Path.MOVETO
-    codes[-1] = Path.CLOSEPOLY
-    pth = Path(pred_corners_2d, codes)
-    p = patches.PathPatch(pth, fill=False, color='green', label='prediction')
-    ax2.add_patch(p)
+    if gt is not None:
+        pred_corners_2d = compute_birdviewbox(gt, shape, scale)
+        codes = [Path.LINETO] * pred_corners_2d.shape[0]
+        codes[0] = Path.MOVETO
+        codes[-1] = Path.CLOSEPOLY
+        pth = Path(pred_corners_2d, codes)
+        p = patches.PathPatch(pth, fill=False, color='green', label='ground truth')
+        ax2.add_patch(p)
 
     if prediction is not None:
         gt_corners_2d = compute_birdviewbox(prediction, shape, scale)
@@ -177,7 +178,7 @@ def draw_birdeyes(ax2, gt, prediction, shape=900, scale=15):
         codes[-1] = Path.CLOSEPOLY
         pth = Path(gt_corners_2d, codes)
         p = patches.PathPatch(
-            pth, fill=False, color='orange', label='ground truth')
+            pth, fill=False, color='red', label='prediction')
         ax2.add_patch(p)
 
 
@@ -311,13 +312,13 @@ def compute_3Dbox(P2, obj, is_kitti, scale_xyz=[1., 1., 1.]):
     # R = euler_to_Rot(euler2[1], euler2[0], euler2[2])
     # print(quat)
     # print(obj['w'], obj['h'], obj['l'])
-    x_corners = [0, obj['w'], obj['w'], obj['w'], obj['w'], 0, 0, 0]
+    z_corners = [0, obj['w'], obj['w'], obj['w'], obj['w'], 0, 0, 0]
     y_corners = [0, 0, obj['h'], obj['h'], 0, 0, obj['h'], obj['h']]
-    z_corners = [0, 0, 0, obj['l'], obj['l'], obj['l'], obj['l'], 0]
+    x_corners = [0, 0, 0, obj['l'], obj['l'], obj['l'], obj['l'], 0]
 
-    x_corners = [i - obj['w'] / 2 for i in x_corners]
+    z_corners = [i - obj['w'] / 2 for i in z_corners]
     y_corners = [i - obj['h'] / 2 for i in y_corners]
-    z_corners = [i - obj['l'] / 2 for i in z_corners]
+    x_corners = [i - obj['l'] / 2 for i in x_corners]
 
     corners_3D = np.array([x_corners, y_corners, z_corners])
     corners_3D = R.dot(corners_3D)
@@ -372,10 +373,10 @@ def draw_3Dbox(ax, P2, obj, color, is_kitti=True):
     p = patches.PathPatch(pth, fill=False, color=color, linewidth=1)
 
     # put a mask on the front
-    ax.plot([corners_2D[0, 3], corners_2D[0, 1]], [
-            corners_2D[1, 3], corners_2D[1, 1]], color='r', lw=1)
-    ax.plot([corners_2D[0, 4], corners_2D[0, 2]], [
-            corners_2D[1, 4], corners_2D[1, 2]], color='r', lw=1)
+    ax.plot([corners_2D[0, 3], corners_2D[0, 5]], [
+            corners_2D[1, 3], corners_2D[1, 5]], color='r', lw=1)
+    ax.plot([corners_2D[0, 6], corners_2D[0, 4]], [
+            corners_2D[1, 6], corners_2D[1, 4]], color='r', lw=1)
     # for i in range(corners_2D.shape[1]):
     #     ax.text(corners_2D[0, i], corners_2D[1, i], i, c='g', fontsize='xx-large')
     ax.add_patch(p)
